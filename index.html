@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>3D World</title>
+  <style>
+    body {
+      margin: 0;
+      font-family: Arial, sans-serif;
+      background-color: #f0f0f0;
+    }
+
+    #colorPickerContainer {
+      position: absolute;
+      bottom: 10px;
+      width: 100%;
+      text-align: center;
+    }
+
+    .colorLabel {
+      display: inline-block;
+      width: 80%;
+      text-align: left;
+      margin-bottom: 5px;
+      color: white; /* White text color */
+      font-weight: bold;
+    }
+
+    .colorSlider {
+      width: 80%;
+      margin-bottom: 10px;
+      appearance: none;
+      height: 10px;
+      border-radius: 5px;
+      outline: none;
+      opacity: 0.7;
+      -webkit-transition: .2s;
+      transition: opacity .2s;
+    }
+
+    .colorSlider:hover {
+      opacity: 1;
+    }
+
+    .colorSlider::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 20px;
+      height: 20px;
+      border-radius: 50%;
+      cursor: pointer;
+      box-shadow: 0 0 5px rgba(0, 0, 0, 0.3);
+    }
+
+    .colorSlider::-moz-range-thumb {
+      width: 20px;
+      height: 20px;
+      border: none;
+      border-radius: 50%;
+      cursor: pointer;
+      box-shadow: 0 0 5px rgba(0, 0, 0, 0.3);
+    }
+  </style>
+</head>
+<body>
+  <div id="colorPickerContainer">
+    <div class="colorLabel" id="hueLabel">Hue</div>
+    <input type="range" id="colorHue" class="colorSlider" value="0" max="360">
+    <div class="colorLabel" id="saturationLabel">Saturation</div>
+    <input type="range" id="colorSaturation" class="colorSlider" value="100" max="100">
+    <div class="colorLabel" id="lightnessLabel">Brightness</div>
+    <input type="range" id="colorLightness" class="colorSlider" value="50" max="100">
+  </div>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/110/three.min.js"></script>
+  <script>
+    const scene = new THREE.Scene();
+    const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+    const renderer = new THREE.WebGLRenderer();
+
+    // Initial color values
+    let initialHue = 0;
+    let initialSaturation = 100;
+    let initialLightness = 50;
+
+    const geometry = new THREE.BoxGeometry();
+    const material = new THREE.MeshBasicMaterial({ color: new THREE.Color(`hsl(${initialHue}, ${initialSaturation}%, ${initialLightness}%)`).getHex() });
+    const cube = new THREE.Mesh(geometry, material);
+
+    scene.add(cube);
+    camera.position.z = 5;
+
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    document.body.appendChild(renderer.domElement);
+
+    const wireframeGeometry = new THREE.EdgesGeometry(geometry);
+    const wireframeMaterial = new THREE.LineBasicMaterial({ color: 0x000000, linewidth: 5 });
+    const wireframe = new THREE.LineSegments(wireframeGeometry, wireframeMaterial);
+    cube.add(wireframe);
+
+    const loader = new THREE.TextureLoader();
+    loader.load(
+      'sky_texture.jpg',
+      (texture) => {
+        scene.background = texture;
+      },
+      undefined,
+      (error) => {
+        console.error('An error occurred while loading the texture:', error);
+      }
+    );
+
+    // Color picker elements
+    const colorHue = document.getElementById('colorHue');
+    const colorSaturation = document.getElementById('colorSaturation');
+    const colorLightness = document.getElementById('colorLightness');
+
+    // Labels for sliders
+    const hueLabel = document.getElementById('hueLabel');
+    const saturationLabel = document.getElementById('saturationLabel');
+    const lightnessLabel = document.getElementById('lightnessLabel');
+
+    // Event listeners for color inputs
+    colorHue.addEventListener('input', updateColor);
+    colorSaturation.addEventListener('input', updateColor);
+    colorLightness.addEventListener('input', updateColor);
+
+    // Canvas for hue gradient
+    const hueCanvas = document.createElement('canvas');
+    const hueCtx = hueCanvas.getContext('2d');
+    hueCanvas.width = 360;
+    hueCanvas.height = 20;
+
+    // Append the hue gradient canvas to the document
+    document.body.appendChild(hueCanvas);
+
+    // Function to update the hue gradient canvas
+    function updateHueGradient() {
+      const gradient = hueCtx.createLinearGradient(0, 0, hueCanvas.width, 0);
+      for (let i = 0; i <= 360; i += 10) {
+        gradient.addColorStop(i / 360, `hsl(${i}, 100%, 50%)`);
+      }
+      hueCtx.fillStyle = gradient;
+      hueCtx.fillRect(0, 0, hueCanvas.width, hueCanvas.height);
+    }
+
+    // Initial update of the hue gradient
+    updateHueGradient();
+
+    function updateColor() {
+      const hue = colorHue.value;
+      const saturation = colorSaturation.value;
+      const lightness = colorLightness.value;
+
+      const colorHex = new THREE.Color(`hsl(${hue}, ${saturation}%, ${lightness}%)`).getHex();
+      material.color.setHex(colorHex);
+
+      // Update text color based on values
+      updateTextColor(hue, saturation, lightness);
+
+      // Update background gradients for saturation and brightness sliders
+      updateSaturationGradient(hue, lightness);
+      updateBrightnessGradient(hue, saturation);
+    }
+
+    function updateTextColor(hue, saturation, lightness) {
+      hueLabel.style.color = 'white';  // White text color
+      saturationLabel.style.color = 'white';  // White text color
+      lightnessLabel.style.color = 'white';  // White text color
+    }
+
+    function updateSaturationGradient(hue, lightness) {
+      const background = `linear-gradient(to right, hsl(${hue}, 0%, ${lightness}%), hsl(${hue}, 100%, ${lightness}%))`;
+      colorSaturation.style.background = background;
+    }
+
+    function updateBrightnessGradient(hue, saturation) {
+      const background = generateBrightnessGradient(hue, saturation);
+      colorLightness.style.background = background;
+    }
+
+    function generateBrightnessGradient(hue, saturation) {
+      const stops = [];
+      for (let i = 0; i <= 100; i += 10) {
+        const color = `hsl(${hue}, ${saturation}%, ${i}%)`;
+        stops.push(color);
+      }
+      return `linear-gradient(to right, ${stops.join(', ')})`;
+    }
+
+    const joystick = { forward: false, backward: false };
+
+    document.addEventListener('keydown', (event) => {
+      if (event.key === 'ArrowUp') joystick.forward = true;
+      else if (event.key === 'ArrowDown') joystick.backward = true;
+    });
+
+    document.addEventListener('keyup', (event) => {
+      if (event.key === 'ArrowUp') joystick.forward = false;
+      else if (event.key === 'ArrowDown') joystick.backward = false;
+    });
+
+    function animate() {
+      requestAnimationFrame(animate);
+      cube.position.z += (joystick.forward ? -0.05 : joystick.backward ? 0.05 : 0);
+      cube.rotation.x += 0.01;
+      cube.rotation.y += 0.01;
+      renderer.render(scene, camera);
+    }
+
+    animate();
+  </script>
+</body>
+</html>
